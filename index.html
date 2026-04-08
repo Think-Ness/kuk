@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Cuti Toko</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --p50:#EEEDFE; --p200:#AFA9EC; --p400:#7F77DD; --p600:#534AB7; --p800:#3C3489; --p900:#26215C;
+      --g50:#F8F8F7; --g100:#F1EFE8; --g200:#D3D1C7; --g400:#888780; --g600:#5F5E5A; --g900:#1A1A18;
+      --r50:#FCEBEB; --r400:#E24B4A; --r800:#791F1F;
+      --grn50:#EAF3DE; --grn800:#27500A;
+      --amb50:#FAEEDA; --amb800:#633806;
+    }
+    body { font-family:'DM Sans',sans-serif; background:var(--g100); min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:40px 16px 80px; }
+    .container { width:100%; max-width:460px; }
+
+    .page-header { margin-bottom:28px; }
+    .page-header h1 { font-size:26px; font-weight:600; color:var(--g900); letter-spacing:-0.5px; margin-bottom:4px; }
+    .page-header p { font-size:14px; color:var(--g400); }
+
+    .card { background:white; border-radius:20px; border:1px solid var(--g200); overflow:hidden; margin-bottom:12px; }
+    .card-inner { padding:20px 22px; }
+
+    .field { margin-bottom:16px; }
+    .field:last-child { margin-bottom:0; }
+    .field label { display:block; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--g400); margin-bottom:7px; }
+    .field input, .field select {
+      width:100%; padding:11px 14px; font-family:'DM Sans',sans-serif; font-size:14px;
+      color:var(--g900); background:var(--g50); border:1px solid var(--g200);
+      border-radius:10px; appearance:none; outline:none; transition:border-color .15s,background .15s;
+    }
+    .field input:focus, .field select:focus { border-color:var(--p400); background:white; }
+    .field input:disabled, .field select:disabled { opacity:0.5; cursor:not-allowed; }
+    .select-wrap { position:relative; }
+    .select-wrap::after { content:''; position:absolute; right:14px; top:50%; transform:translateY(-50%); border:5px solid transparent; border-top-color:var(--g400); pointer-events:none; }
+
+    /* Riwayat banner */
+    .riwayat-banner {
+      display:none; margin-top:10px; padding:10px 14px;
+      background:var(--amb50); border-radius:10px;
+      font-size:13px; color:var(--amb800); line-height:1.5;
+    }
+    .riwayat-banner strong { font-weight:600; }
+
+    /* Alert */
+    .alert { padding:11px 14px; border-radius:10px; font-size:13px; font-weight:500; margin-bottom:12px; display:none; }
+    .alert.info    { background:var(--p50);   color:var(--p800); }
+    .alert.success { background:var(--grn50); color:var(--grn800); }
+    .alert.error   { background:var(--r50);   color:var(--r800); }
+
+    /* Calendar */
+    .cal-section { padding:20px 22px 16px; }
+    .cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+    .cal-nav-title { font-size:15px; font-weight:600; color:var(--g900); }
+    .cal-nav-btn { width:32px; height:32px; border:1px solid var(--g200); border-radius:8px; background:var(--g50); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--g600); font-size:16px; transition:background .12s; }
+    .cal-nav-btn:hover { background:var(--g100); border-color:var(--g400); }
+    .cal-dow-row { display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; }
+    .cal-dow { text-align:center; font-size:11px; font-weight:600; letter-spacing:0.04em; color:var(--g400); padding:4px 0; text-transform:uppercase; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+    .cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:13px; border-radius:50%; cursor:pointer; color:var(--g900); position:relative; transition:background .1s; user-select:none; }
+    .cal-day.empty { cursor:default; }
+    .cal-day:not(.empty):not(.past):not(.booked):not(.locked):hover { background:var(--g100); }
+    .cal-day.today { font-weight:600; color:var(--p600); }
+    .cal-day.today::after { content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:4px; height:4px; background:var(--p600); border-radius:50%; }
+    .cal-day.selected { background:var(--p600); color:white; font-weight:500; }
+    .cal-day.selected.today::after { background:white; }
+    .cal-day.selected:hover { background:var(--p800); }
+    /* Tanggal yg sudah diambil orang lain */
+    .cal-day.booked { background:var(--p50); color:var(--p200); cursor:not-allowed; }
+    .cal-day.booked::before { content:''; position:absolute; top:4px; right:4px; width:5px; height:5px; background:var(--p400); border-radius:50%; }
+    /* Tanggal yg sudah diajukan karyawan ini sendiri (cicil) */
+    .cal-day.mine { background:var(--p800); color:white; cursor:not-allowed; }
+    .cal-day.mine::after { content:'✓'; position:absolute; font-size:8px; bottom:3px; right:3px; }
+    .cal-day.past { color:var(--g200); cursor:default; }
+    .cal-day.locked { color:var(--g200); cursor:default; opacity:0.5; }
+
+    /* Quota */
+    .quota-bar { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; border-top:1px solid var(--g100); }
+    .quota-label { font-size:12px; color:var(--g400); }
+    .quota-dots { display:flex; gap:6px; }
+    .quota-dot { width:10px; height:10px; border-radius:50%; border:1.5px solid var(--p400); transition:background .15s; }
+    .quota-dot.filled { background:var(--p600); border-color:var(--p600); }
+    .quota-dot.mine-dot { background:var(--p800); border-color:var(--p800); }
+
+    /* Chips */
+    .sel-section { padding:14px 22px 16px; border-top:1px solid var(--g100); min-height:56px; display:flex; align-items:flex-start; flex-wrap:wrap; gap:7px; }
+    .sel-empty { font-size:13px; color:var(--g400); align-self:center; }
+    .chip { border-radius:20px; padding:5px 10px 5px 12px; font-size:12px; font-weight:500; display:flex; align-items:center; gap:5px; animation:chipIn .15s ease; }
+    .chip.new { background:var(--p50); color:var(--p800); }
+    .chip.existing { background:var(--p800); color:white; cursor:default; }
+    @keyframes chipIn { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
+    .chip-remove { background:none; border:none; cursor:pointer; color:var(--p400); font-size:16px; line-height:1; padding:0; display:flex; align-items:center; }
+    .chip-remove:hover { color:var(--p600); }
+    .chip-tag { font-size:10px; background:rgba(0,0,0,0.1); border-radius:4px; padding:1px 5px; margin-left:2px; }
+
+    /* Legend */
+    .legend { display:flex; gap:14px; padding:0 22px 18px; flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--g400); }
+    .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+    /* Submit */
+    .btn-submit { width:100%; padding:14px; background:var(--p600); color:white; border:none; border-radius:14px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:-0.2px; transition:background .15s,transform .1s; }
+    .btn-submit:hover:not(:disabled) { background:var(--p800); transform:translateY(-1px); }
+    .btn-submit:active:not(:disabled) { transform:translateY(0); }
+    .btn-submit:disabled { background:var(--g200); color:var(--g400); cursor:default; }
+    .btn-submit.loading::after { content:''; display:inline-block; width:14px; height:14px; margin-left:8px; border:2px solid rgba(255,255,255,.4); border-top-color:white; border-radius:50%; vertical-align:middle; animation:spin .6s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    .footer { text-align:center; margin-top:24px; font-size:12px; color:var(--g400); }
+
+    /* Skeleton loader */
+    .skeleton { height:38px; border-radius:10px; background:linear-gradient(90deg,var(--g100) 25%,var(--g200) 50%,var(--g100) 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
+    @keyframes shimmer { to{background-position:-200% 0} }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="page-header">
+    <h1>Ajukan Cuti</h1>
+    <p>Pilih nama &amp; bagian, lalu tandai tanggal — maks. 3 hari</p>
+  </div>
+
+  <div class="alert" id="alertBox"></div>
+
+  <div class="card">
+    <div class="card-inner">
+      <div class="field">
+        <label>Nama Karyawan</label>
+        <div class="select-wrap" id="namaWrap">
+          <div class="skeleton"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Bagian / Divisi</label>
+        <div class="select-wrap" id="bagianWrap">
+          <div class="skeleton"></div>
+        </div>
+      </div>
+      <div class="riwayat-banner" id="riwayatBanner"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="cal-section">
+      <div class="cal-nav">
+        <button class="cal-nav-btn" onclick="prevMonth()">&#8249;</button>
+        <span class="cal-nav-title" id="calTitle"></span>
+        <button class="cal-nav-btn" onclick="nextMonth()">&#8250;</button>
+      </div>
+      <div class="cal-dow-row">
+        <div class="cal-dow">Min</div><div class="cal-dow">Sen</div><div class="cal-dow">Sel</div>
+        <div class="cal-dow">Rab</div><div class="cal-dow">Kam</div><div class="cal-dow">Jum</div><div class="cal-dow">Sab</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <div class="quota-bar">
+      <span class="quota-label" id="quotaLabel">Kuota tersisa</span>
+      <div class="quota-dots" id="quotaDots">
+        <div class="quota-dot"></div><div class="quota-dot"></div><div class="quota-dot"></div>
+      </div>
+    </div>
+
+    <div class="sel-section" id="selSection">
+      <span class="sel-empty">Belum ada tanggal dipilih</span>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--p600)"></div> Dipilih</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--p800)"></div> Sudah cuti kamu</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--p50);border:1px solid var(--p200)"></div> Diambil rekan</div>
+    </div>
+  </div>
+
+  <button class="btn-submit" id="submitBtn" disabled onclick="submitCuti()">Pilih tanggal dulu</button>
+  <div class="footer">Sistem Cuti &mdash; Data tersimpan di Google Sheets</div>
+</div>
+
+<script>
+// ============================================================
+// ⚙️ GANTI URL INI setelah deploy Google Apps Script
+// ============================================================
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyyDvQaCz8tzI2FzfOmcwjxCKH6um0cAuXTpH-9bjxYgL6ek6jiBmaFhofD5WBJOd48/exec";
+// ============================================================
+
+const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const today  = new Date(); today.setHours(0,0,0,0);
+
+let viewYear  = today.getFullYear();
+let viewMonth = today.getMonth();
+let selected  = [];       // tanggal baru yang dipilih sekarang
+let myDates   = [];       // tanggal yg sudah diajukan karyawan ini sebelumnya
+let booked    = [];       // tanggal sudah diambil rekan se-bagian
+let isLoading = false;
+
+// ---- Helpers ----
+function toKey(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function formatLabel(key){ const[y,m,d]=key.split('-'); return `${+d} ${MONTHS[+m-1]} ${y}`; }
+
+function showAlert(msg,type='info',dur=0){
+  const el=document.getElementById('alertBox');
+  el.textContent=msg; el.className=`alert ${type}`; el.style.display='block';
+  if(dur) setTimeout(()=>el.style.display='none',dur);
+}
+function hideAlert(){ document.getElementById('alertBox').style.display='none'; }
+
+// ---- Load daftar karyawan & bagian dari Sheets ----
+function loadInit(){
+  fetch(`${SCRIPT_URL}?action=init`)
+    .then(r=>r.json())
+    .then(data=>{
+      buildSelect('namaWrap', 'nama', '— Pilih nama kamu —', data.karyawan, onNamaChange);
+      buildSelect('bagianWrap', 'bagian', '— Pilih bagian —', data.bagian, onBagianChange);
+    })
+    .catch(()=>{
+      showAlert('Gagal memuat data dari server. Coba refresh halaman.','error');
+    });
+}
+
+function buildSelect(wrapId, id, placeholder, items, onChange){
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = '';
+  const sel = document.createElement('select');
+  sel.id = id;
+  sel.addEventListener('change', onChange);
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    items.map(v=>`<option value="${v}">${v}</option>`).join('');
+  wrap.appendChild(sel);
+}
+
+// ---- Nama dipilih → cek bagian dulu, kalau keduanya ada → muat riwayat ----
+function onNamaChange(){ checkAndLoadRiwayat(); }
+function onBagianChange(){
+  booked=[];
+  selected=[];
+  const bagian=getVal('bagian');
+  if(bagian){
+    fetch(`${SCRIPT_URL}?action=booked&bagian=${encodeURIComponent(bagian)}`)
+      .then(r=>r.json())
+      .then(d=>{ booked=d.booked||[]; renderCal(); });
+  }
+  checkAndLoadRiwayat();
+}
+
+function checkAndLoadRiwayat(){
+  const nama=getVal('nama'), bagian=getVal('bagian');
+  const banner=document.getElementById('riwayatBanner');
+  myDates=[]; selected=[];
+  banner.style.display='none';
+  renderCal(); renderSel();
+  if(!nama||!bagian) return;
+
+  fetch(`${SCRIPT_URL}?action=riwayat&nama=${encodeURIComponent(nama)}&bagian=${encodeURIComponent(bagian)}`)
+    .then(r=>r.json())
+    .then(d=>{
+      if(d.riwayat && d.riwayat.ada){
+        myDates = d.riwayat.tanggal;
+        const sisa = 3 - myDates.length;
+        banner.innerHTML = `<strong>${nama}</strong> di bagian <strong>${bagian}</strong> sudah mengajukan <strong>${myDates.length} hari</strong>: ${myDates.map(formatLabel).join(', ')}.<br>` +
+          (sisa>0 ? `Sisa kuota: <strong>${sisa} hari</strong> lagi.` : `<strong>Kuota penuh.</strong>`);
+        banner.style.display='block';
+      }
+      renderCal(); renderSel();
+    });
+}
+
+function getVal(id){ const el=document.getElementById(id); return el?el.value:''; }
+
+// ---- Calendar ----
+function prevMonth(){ viewMonth--; if(viewMonth<0){viewMonth=11;viewYear--;} renderCal(); }
+function nextMonth(){ viewMonth++; if(viewMonth>11){viewMonth=0;viewYear++;} renderCal(); }
+
+function renderCal(){
+  document.getElementById('calTitle').textContent=`${MONTHS[viewMonth]} ${viewYear}`;
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML='';
+  const firstDay=new Date(viewYear,viewMonth,1).getDay();
+  const totalDays=new Date(viewYear,viewMonth+1,0).getDate();
+  const nama=getVal('nama'), bagian=getVal('bagian');
+  const kuotaSisa=3-myDates.length;
+
+  for(let i=0;i<firstDay;i++){
+    const el=document.createElement('div'); el.className='cal-day empty'; grid.appendChild(el);
+  }
+
+  for(let d=1;d<=totalDays;d++){
+    const key=toKey(viewYear,viewMonth,d);
+    const date=new Date(viewYear,viewMonth,d);
+    const el=document.createElement('div');
+    el.className='cal-day';
+    el.textContent=d;
+
+    if(date<today){
+      el.classList.add('past');
+    } else if(myDates.includes(key)){
+      el.classList.add('mine');
+      el.title='Sudah kamu ajukan';
+    } else if(booked.includes(key)){
+      el.classList.add('booked');
+      el.title='Sudah diambil rekan';
+    } else if(!nama||!bagian){
+      el.classList.add('locked');
+    } else {
+      if(date.getTime()===today.getTime()) el.classList.add('today');
+      if(selected.includes(key)) el.classList.add('selected');
+      el.addEventListener('click',()=>toggleDay(key, kuotaSisa));
+    }
+    grid.appendChild(el);
+  }
+}
+
+function toggleDay(key, kuotaSisa){
+  if(selected.includes(key)){
+    selected=selected.filter(k=>k!==key);
+  } else {
+    if(selected.length >= kuotaSisa){
+      showAlert(`Kuota tersisa hanya ${kuotaSisa} hari lagi!`,'error',2500);
+      return;
+    }
+    selected.push(key);
+  }
+  renderCal(); renderSel();
+}
+
+function renderSel(){
+  const section=document.getElementById('selSection');
+  const btn=document.getElementById('submitBtn');
+  const dots=document.getElementById('quotaDots');
+  const label=document.getElementById('quotaLabel');
+
+  section.innerHTML='';
+  const allSelected=[...myDates,...selected].sort();
+  const kuotaTerpakai=allSelected.length;
+
+  if(allSelected.length===0){
+    section.innerHTML='<span class="sel-empty">Belum ada tanggal dipilih</span>';
+  } else {
+    // Chip: tanggal lama (mine)
+    myDates.slice().sort().forEach(key=>{
+      const chip=document.createElement('div');
+      chip.className='chip existing';
+      chip.innerHTML=`${formatLabel(key)} <span class="chip-tag">tersimpan</span>`;
+      section.appendChild(chip);
+    });
+    // Chip: tanggal baru
+    selected.slice().sort().forEach(key=>{
+      const chip=document.createElement('div');
+      chip.className='chip new';
+      chip.innerHTML=`${formatLabel(key)} <button class="chip-remove" onclick="removeDay('${key}')">×</button>`;
+      section.appendChild(chip);
+    });
+  }
+
+  // Dots: mine=gelap, selected=ungu, kosong=outline
+  dots.innerHTML='';
+  for(let i=0;i<3;i++){
+    const dot=document.createElement('div');
+    if(i<myDates.length) dot.className='quota-dot mine-dot';
+    else if(i<kuotaTerpakai) dot.className='quota-dot filled';
+    else dot.className='quota-dot';
+    dots.appendChild(dot);
+  }
+
+  const sisa=3-kuotaTerpakai;
+  label.textContent=`Sisa kuota: ${sisa} hari`;
+
+  btn.disabled=selected.length===0||isLoading;
+  btn.textContent=selected.length>0
+    ?`Tambahkan ${selected.length} Hari Cuti`
+    :'Pilih tanggal dulu';
+  btn.classList.remove('loading');
+}
+
+function removeDay(key){ selected=selected.filter(k=>k!==key); renderCal(); renderSel(); }
+
+// ---- Submit ----
+function submitCuti(){
+  const nama=getVal('nama'), bagian=getVal('bagian');
+  if(!nama){ showAlert('Pilih nama karyawan dulu.','error',3000); return; }
+  if(!bagian){ showAlert('Pilih bagian/divisi dulu.','error',3000); return; }
+  if(selected.length===0){ showAlert('Pilih minimal 1 tanggal.','error',3000); return; }
+
+  isLoading=true;
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='Menyimpan...'; btn.classList.add('loading');
+  hideAlert();
+
+  fetch(SCRIPT_URL,{ method:'POST', body:JSON.stringify({ nama, bagian, tanggal:[...selected].sort() }) })
+    .then(r=>r.json())
+    .then(res=>{
+      isLoading=false;
+      if(res.result==='success'){
+        showAlert(`Berhasil! Total cuti ${nama}: ${res.totalHari} hari.`,'success');
+        myDates=res.tanggal||[];
+        selected=[];
+        document.getElementById('riwayatBanner').style.display='none';
+        checkAndLoadRiwayat();
+        renderCal(); renderSel();
+      } else {
+        showAlert(res.message||'Gagal menyimpan. Coba lagi.','error',6000);
+        btn.disabled=false;
+        btn.textContent=`Tambahkan ${selected.length} Hari Cuti`;
+        btn.classList.remove('loading');
+      }
+    })
+    .catch(()=>{
+      isLoading=false;
+      showAlert('Gagal terhubung ke server.','error',5000);
+      btn.disabled=false;
+      btn.textContent=`Tambahkan ${selected.length} Hari Cuti`;
+      btn.classList.remove('loading');
+    });
+}
+
+// ---- Init ----
+renderCal(); renderSel(); loadInit();
+</script>
+</body>
+</html>
